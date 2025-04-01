@@ -1,12 +1,26 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 """
 Programme principal du solveur de Sudoku.
 """
 
 import time
+import sys
 from src.grid import Grid
 from src.brute_force import BruteForce
 from src.backtracking import Backtracking
-from src.gui import SudokuGUI
+
+# Vérifier si pygame est disponible
+PYGAME_AVAILABLE = True
+try:
+    import pygame
+    from src.gui import SudokuGUI
+except ImportError:
+    PYGAME_AVAILABLE = False
+except Exception:
+    # Si une autre erreur se produit (comme video system not initialized)
+    PYGAME_AVAILABLE = False
 
 def choose_difficulty():
     """Permet à l'utilisateur de choisir le niveau de difficulté."""
@@ -50,54 +64,129 @@ def choose_method():
         except ValueError:
             print("Veuillez entrer un nombre valide")
 
-def solve_grid(grid, method):
-    """Résout la grille avec la méthode choisie."""
-    if method == 1:
-        solver = BruteForce(grid)
-        method_name = "force brute"
-    else:
-        solver = Backtracking(grid)
-        method_name = "backtracking"
+def choose_display_mode():
+    """Permet à l'utilisateur de choisir le mode d'affichage."""
+    if not PYGAME_AVAILABLE:
+        print("\nMode graphique non disponible. Utilisation du mode console uniquement.")
+        return 1
+        
+    print("\nChoisissez le mode d'affichage :")
+    print("1. Résultat final uniquement")
+    print("2. Animation du processus de résolution")
     
-    print(f"\nRésolution par {method_name} en cours...")
+    while True:
+        try:
+            choice = int(input("\nVotre choix (1-2) : "))
+            if choice in [1, 2]:
+                return choice
+            else:
+                print("Veuillez choisir 1 ou 2")
+        except ValueError:
+            print("Veuillez entrer un nombre valide")
+
+def solve_grid_without_animation(grid, method):
+    """Résout la grille sans animation.
+    
+    Args:
+        grid (Grid): La grille à résoudre
+        method (int): La méthode de résolution (1: force brute, 2: backtracking)
+        
+    Returns:
+        tuple: (Grid résolue, temps d'exécution, nombre de tentatives)
+    """
+    solver_grid = grid.copy()
+    
+    if method == 1:
+        print("\nRésolution par force brute en cours...")
+        solver = BruteForce(solver_grid)
+        # Désactiver l'animation pour la force brute
+        solver.animate = False
+    else:
+        print("\nRésolution par backtracking en cours...")
+        solver = Backtracking(solver_grid)
+        # Désactiver l'animation pour le backtracking
+        solver.animate = False
+    
     start_time = time.time()
     solver.solve()
-    solve_time = time.time() - start_time
+    execution_time = time.time() - start_time
     
-    print(f"\nSolution par {method_name}:")
-    grid.print(highlight_original=True)
-    print(f"Temps d'exécution: {solve_time:.6f} secondes")
-    return solve_time
+    # Récupérer le nombre de tentatives (seulement disponible pour BruteForce)
+    attempts = getattr(solver, 'attempts', 0)
+    
+    return solver_grid, execution_time, attempts
 
 def main():
     """Fonction principale du programme."""
-    try:
-        # Choisir le niveau de difficulté
-        file_name = choose_difficulty()
-        file_path = f"examples/{file_name}"
-        
-        # Charger la grille
-        grid = Grid()
-        grid.load_from_file(file_path)
-        
-        print("\nGrille originale (les chiffres en gras sont les valeurs d'origine):")
-        grid.print(highlight_original=True)
-        
-        # Choisir la méthode de résolution
-        method = choose_method()
-        
-        # Résoudre la grille
-        solve_time = solve_grid(grid, method)
-        
-        # Affichage graphique
-        choice = input("\nVoulez-vous afficher la grille avec l'interface graphique? (o/n): ")
-        if choice.lower() == 'o':
-            gui = SudokuGUI(grid, grid)  # On passe la même grille deux fois car on veut garder les valeurs d'origine
-            gui.run()
+    running = True
+    
+    while running:
+        try:
+            # Afficher un message de bienvenue
+            print("\n" + "="*50)
+            print("=== Solveur de Sudoku ===".center(50))
+            print("="*50)
+            print("Ce programme permet de résoudre des grilles de Sudoku et de comparer")
+            print("les performances de deux algorithmes : force brute et backtracking.")
             
-    except Exception as e:
-        print(f"Erreur: {e}")
-        print("Assurez-vous que le fichier existe dans le dossier examples/")
+            # Choisir le niveau de difficulté
+            file_name = choose_difficulty()
+            file_path = f"examples/{file_name}"
+            
+            # Charger la grille
+            grid = Grid()
+            grid.load_from_file(file_path)
+            
+            print("\nGrille originale:")
+            grid.print()
+            
+            # Choisir la méthode de résolution
+            method = choose_method()
+            
+            # Choisir le mode d'affichage (seulement si pygame est disponible)
+            display_mode = choose_display_mode()
+            
+            # Si mode animation et pygame disponible
+            if display_mode == 2 and PYGAME_AVAILABLE:
+                print("\nLancement de l'animation de résolution...")
+                gui = SudokuGUI()
+                result = gui.run_with_animation(grid, "brute_force" if method == 1 else "backtracking")
+                
+                if result == "QUIT":
+                    print("\nAppuyez sur Entrée pour continuer...")
+                    input()
+                continue  # Revenir au menu principal
+            
+            # Sinon, résolution normale sans animation
+            solved_grid, execution_time, attempts = solve_grid_without_animation(grid, method)
+            
+            method_name = "force brute" if method == 1 else "backtracking"
+            print(f"\nSolution par {method_name}:")
+            solved_grid.print(highlight_original=True)
+            print(f"Temps d'exécution: {execution_time:.6f} secondes")
+            
+            # Affichage graphique du résultat final (seulement si pygame est disponible)
+            if PYGAME_AVAILABLE:
+                show_gui = input("\nVoulez-vous afficher la grille avec l'interface graphique? (o/n): ")
+                if show_gui.lower() == 'o':
+                    method_name = "brute_force" if method == 1 else "backtracking"
+                    gui = SudokuGUI(solved_grid, grid, algorithm_name=method_name)
+                    result = gui.run()
+                    
+                    if result == "QUIT":
+                        print("\nAppuyez sur Entrée pour continuer...")
+                        input()
+                    continue
+            
+            # Demander si l'utilisateur veut réessayer
+            retry = input("\nVoulez-vous résoudre une autre grille? (o/n): ")
+            if retry.lower() != 'o':
+                print("\nMerci d'avoir utilisé le solveur de Sudoku !")
+                running = False
+                
+        except Exception as e:
+            print(f"Erreur: {e}")
+            input("\nAppuyez sur Entrée pour continuer...")
 
 if __name__ == "__main__":
     main() 
