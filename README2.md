@@ -21,3 +21,7 @@ Ce projet a révolutionné ma conception des algorithmes. La force brute sur une
 Face à cette infinité, même avec la dernière RTX 5090 calculant 100 trillions d'opérations par seconde, la résolution par force brute prendrait environ 200 milliards de fois l'âge actuel de l'univers. Pourtant, le backtracking résout ce même problème en 0.002 seconde.
 
 Cette expérience transcende le simple exercice académique : elle m'a enseigné que l'élégance algorithmique est l'essence même de l'informatique, transformant l'impossible en immédiat par la pure puissance de la logique.
+
+## Margaux :
+J'étais assez familière avec ces deux algorithmes mais cela m'a montré que l'utilisation d'un algorithme au cas par cas est primordial. Ils conviennent tous à une situation particulière. 
+Le backtracking serait inutile dans un environnement comme l'injection SQL mais est parfait dans le cas d'un Sudoku Solver où l'on peut définir précisément les règles. On peut aller d'autant plus loin avec quelques heuristiques pour commencer par les lignes/colonnes/carrés 3x3 qui contiennent le plus de nombres.
